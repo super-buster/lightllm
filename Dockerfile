@@ -23,17 +23,18 @@ RUN case ${TARGETPLATFORM} in \
          "linux/arm64")  MAMBA_ARCH=aarch64  ;; \
          *)              MAMBA_ARCH=x86_64   ;; \
     esac && \
-    curl -fsSL -o ~/mambaforge.sh -v "https://github.com/conda-forge/miniforge/releases/download/${MAMBA_VERSION}/Mambaforge-${MAMBA_VERSION}-Linux-${MAMBA_ARCH}.sh" && \
+    curl -fsSL -o ~/mambaforge.sh -v "http://47.93.190.43:8503/Mambaforge-Linux-x86_64.sh" && \
     bash ~/mambaforge.sh -b -p /opt/conda && \
     rm ~/mambaforge.sh
 
 RUN case ${TARGETPLATFORM} in \
          "linux/arm64")  exit 1 ;; \
          *)              /opt/conda/bin/conda update -y conda &&  \
-                        /opt/conda/bin/conda install -c "${INSTALL_CHANNEL}" -c "${CUDA_CHANNEL}" -y "python=${PYTHON_VERSION}" pytorch==$PYTORCH_VERSION "pytorch-cuda=$(echo $CUDA_VERSION | cut -d'.' -f 1-2)" -c anaconda -c conda-forge ;; \
+                        /opt/conda/bin/conda install -c "${INSTALL_CHANNEL}" -c "${CUDA_CHANNEL}" -c nvidia -y "python=${PYTHON_VERSION}" pytorch==$PYTORCH_VERSION "pytorch-cuda=$(echo $CUDA_VERSION | cut -d'.' -f 1-2)" -c anaconda -c conda-forge ;; \
     esac && \
     /opt/conda/bin/conda clean -ya
 
+COPY ./cuda.h /usr/local/cuda/include/cuda.h
 # workaround
 RUN mkdir ~/cuda-nvcc && cd ~/cuda-nvcc && \
     curl -fsSL -o package.tar.bz2 https://conda.anaconda.org/nvidia/label/cuda-12.1.1/linux-64/cuda-nvcc-12.1.105-0.tar.bz2 && \
@@ -41,11 +42,12 @@ RUN mkdir ~/cuda-nvcc && cd ~/cuda-nvcc && \
     mkdir -p /usr/local/cuda/bin && \
     mkdir -p /usr/local/cuda/include && \
     cp bin/ptxas /usr/local/cuda/bin/ptxas && \
-    curl -fsSL -o /usr/local/cuda/include/cuda.h https://raw.githubusercontent.com/openai/triton/d1ce4c495052a1ac06302213cae8eb5532a67259/python/triton/third_party/cuda/include/cuda.h \
-    && rm ~/cuda-nvcc -rf
+    rm ~/cuda-nvcc -rf
 
 WORKDIR /root
 
+RUN pip install -U pip && pip config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple \
+&& pip config set install.trusted-host pypi.tuna.tsinghua.edu.cn
 COPY . /lightllm
 RUN pip install -r /lightllm/requirements.txt --no-cache-dir && \
     pip install -e /lightllm --no-cache-dir

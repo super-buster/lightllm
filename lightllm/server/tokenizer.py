@@ -23,7 +23,11 @@ from transformers import (AutoTokenizer, PreTrainedTokenizer,
 from transformers.convert_slow_tokenizer import convert_slow_tokenizer
 from transformers import LlamaTokenizer
 from transformers.configuration_utils import PretrainedConfig
+import os 
 
+def file_exists(directory, filename):
+    file_path = os.path.join(directory, filename)
+    return os.path.isfile(file_path)
 
 # A fast LLaMA tokenizer with the pre-processed `tokenizer.json` file.
 _FAST_LLAMA_TOKENIZER = "hf-internal-testing/llama-tokenizer"
@@ -36,19 +40,24 @@ def get_tokenizer(
     *args,
     **kwargs,
 ) -> Union[PreTrainedTokenizer, PreTrainedTokenizerFast]:
-    """Gets a tokenizer for the given model name via Huggingface."""
+    """Gets a tokenizer for the given model name via Huggingface.
+       tokenizer_name: model_weightdir, aka model_dir
+    """
     if tokenizer_mode == "slow":
         if kwargs.get("use_fast", False):
             raise ValueError(
                 "Cannot use the fast tokenizer in slow tokenizer mode.")
         kwargs["use_fast"] = False
 
-    if "llama" in tokenizer_name.lower() and kwargs.get("use_fast", True):
+    if file_exists(tokenizer_name,"tokenizer.json") and kwargs.get("use_fast", True):
         print(
             "For some LLaMA-based models, initializing the fast tokenizer may "
             "take a long time. To eliminate the initialization time, consider "
             f"using '{_FAST_LLAMA_TOKENIZER}' instead of the original "
             "tokenizer.")
+        print("load fast llama tokenizer...")
+        from transformers import LlamaTokenizerFast
+        tokenizer = LlamaTokenizerFast.from_pretrained(tokenizer_name)
         # tokenizer = LlamaTokenizer.from_pretrained(tokenizer_name)
         # tokenizer = convert_slow_tokenizer(tokenizer)
         # return tokenizer
